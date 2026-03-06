@@ -35,7 +35,7 @@ export class BinaryManager {
     if (!options.allowAutoDownload) {
       throw new DownloadError(
         `Neo4j ${options.edition} ${options.version} is not cached and auto-download is disabled. ` +
-        'Run "npx neo4j-local install" first or set allowAutoDownloadNeo4j: true.',
+        'Run "npx @johnymontana/neo4j-local install" first or set allowAutoDownloadNeo4j: true.',
       );
     }
 

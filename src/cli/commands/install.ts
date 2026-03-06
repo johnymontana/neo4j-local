@@ -26,7 +26,7 @@ export const installCommand = new Command('install')
 
       console.log('');
       console.log(`Neo4j ${opts.edition} ${opts.version} is ready.`);
-      console.log('Run "npx neo4j-local start" to start an instance.');
+      console.log('Run "npx @johnymontana/neo4j-local start" to start an instance.');
     } catch (err) {
       console.error(`\nError: ${(err as Error).message}`);
       process.exit(1);

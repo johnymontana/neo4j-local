@@ -13,7 +13,7 @@ export const credentialsCommand = new Command('credentials')
 
       if (!creds) {
         console.error(`No instance found for "${opts.instance}".`);
-        console.error('Run "npx neo4j-local start" to create one.');
+        console.error('Run "npx @johnymontana/neo4j-local start" to create one.');
         process.exit(1);
       }
 

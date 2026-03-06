@@ -4,7 +4,7 @@ Instructions for AI assistants working on this codebase.
 
 ## Project Overview
 
-`neo4j-local` is an npm package that downloads, installs, configures, and manages local Neo4j database instances. It provides both a programmatic TypeScript API and a CLI. The package auto-downloads Neo4j distributions and a compatible JRE, installs plugins (APOC, GDS, GenAI), and manages the full process lifecycle.
+`@johnymontana/neo4j-local` is an npm package that downloads, installs, configures, and manages local Neo4j database instances. It provides both a programmatic TypeScript API and a CLI. The package auto-downloads Neo4j distributions and a compatible JRE, installs plugins (APOC, GDS, GenAI), and manages the full process lifecycle.
 
 ## Build & Test Commands
 

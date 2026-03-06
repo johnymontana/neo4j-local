@@ -18,7 +18,7 @@ export const versionsCommand = new Command('versions')
 
       if (versions.length === 0) {
         console.log('No cached Neo4j versions found.');
-        console.log('Run "npx neo4j-local install" to download one.');
+        console.log('Run "npx @johnymontana/neo4j-local install" to download one.');
       } else {
         console.log('');
         console.log('Cached Neo4j versions:');

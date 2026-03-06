@@ -1,5 +1,5 @@
 {
-  "name": "neo4j-local",
+  "name": "@johnymontana/neo4j-local",
   "version": "0.1.0",
   "description": "Download, install, and manage a local Neo4j database instance",
   "type": "module",

@@ -13,7 +13,7 @@ export const statusCommand = new Command('status')
 
       if (!creds) {
         console.log(`No instance found for "${opts.instance}".`);
-        console.log('Run "npx neo4j-local start" to create one.');
+        console.log('Run "npx @johnymontana/neo4j-local start" to create one.');
         process.exit(0);
       }
 

@@ -5,7 +5,7 @@ Download, install, and manage a local Neo4j database instance. Zero-config graph
 `neo4j-local` automatically downloads Neo4j and a compatible JRE, configures an instance with sensible defaults (including APOC, GDS, and GenAI plugins), and manages the full lifecycle — all from a single API call or CLI command.
 
 ```bash
-npx neo4j-local start
+npx @johnymontana/neo4j-local start
 ```
 
 ```
@@ -23,7 +23,7 @@ Press Ctrl+C to stop.
 ## Installation
 
 ```bash
-npm install neo4j-local
+npm install @johnymontana/neo4j-local
 ```
 
 Requires Node.js >= 18.0.0. Java is downloaded automatically if not found on the system.
@@ -33,7 +33,7 @@ Requires Node.js >= 18.0.0. Java is downloaded automatically if not found on the
 ### Programmatic API
 
 ```typescript
-import { Neo4jLocal } from 'neo4j-local';
+import { Neo4jLocal } from '@johnymontana/neo4j-local';
 
 const neo4j = new Neo4jLocal();
 const credentials = await neo4j.start();
@@ -49,7 +49,7 @@ await neo4j.stop();
 ### Static Factory
 
 ```typescript
-import { Neo4jLocal } from 'neo4j-local';
+import { Neo4jLocal } from '@johnymontana/neo4j-local';
 
 const neo4j = await Neo4jLocal.create();
 // Instance is already running
@@ -68,7 +68,7 @@ await neo4j.start();
 ### With neo4j-driver
 
 ```typescript
-import { Neo4jLocal } from 'neo4j-local';
+import { Neo4jLocal } from '@johnymontana/neo4j-local';
 import neo4j from 'neo4j-driver';
 
 const local = await Neo4jLocal.create();
@@ -86,7 +86,7 @@ await local.stop();
 
 ## CLI
 
-All commands are available via `npx neo4j-local` or by installing globally.
+All commands are available via `npx @johnymontana/neo4j-local` or by installing globally.
 
 ### start
 
