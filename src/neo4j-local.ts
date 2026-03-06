@@ -35,6 +35,7 @@ import {
   getInstanceDir,
   ensureDir,
   generatePassword,
+  readCredentials,
   writePidFile,
   removePidFile,
 } from './fs-utils.js';
@@ -63,6 +64,7 @@ interface ResolvedOptions {
 export class Neo4jLocal extends EventEmitter {
   private state: Neo4jLocalState = 'new';
   private options: ResolvedOptions;
+  private passwordExplicitlySet: boolean;
   private cachedBinary: CachedBinary | null = null;
   private cachedJre: CachedJre | null = null;
   private instanceDir: string;
@@ -77,6 +79,7 @@ export class Neo4jLocal extends EventEmitter {
   constructor(options?: Neo4jLocalOptions) {
     super();
     this.options = this.resolveOptions(options);
+    this.passwordExplicitlySet = options?.credentials?.password != null;
     this.logger = new Logger('neo4j-local', this.options.verbose);
 
     this.platformResolver = new PlatformResolver(this.logger);
@@ -95,6 +98,15 @@ export class Neo4jLocal extends EventEmitter {
     this.setState('installing');
 
     try {
+      // Reuse existing password if one was previously stored and no explicit password was provided
+      if (!this.passwordExplicitlySet) {
+        const existingCreds = await readCredentials(this.instanceDir);
+        if (existingCreds) {
+          this.logger.debug('Reusing password from existing credentials');
+          this.options.password = existingCreds.password;
+        }
+      }
+
       // Ensure Java is available
       this.cachedJre = await this.javaManager.ensureJava({
         neo4jVersion: this.options.version,

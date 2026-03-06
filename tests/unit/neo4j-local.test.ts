@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Neo4jLocal, DEFAULT_PLUGINS } from '../../src/neo4j-local.js';
 import { StateError } from '../../src/errors.js';
+import * as fsUtils from '../../src/fs-utils.js';
 
 describe('Neo4jLocal', () => {
   describe('constructor', () => {
@@ -216,6 +217,77 @@ describe('Neo4jLocal', () => {
   describe('create() static method', () => {
     it('is a static method', () => {
       expect(typeof Neo4jLocal.create).toBe('function');
+    });
+  });
+
+  describe('password preservation across restarts', () => {
+    it('reuses stored password when no explicit password is provided', async () => {
+      const storedPassword = 'previously-generated-pw';
+      const readCredsSpy = vi.spyOn(fsUtils, 'readCredentials').mockResolvedValue({
+        username: 'neo4j',
+        password: storedPassword,
+        ports: { bolt: 7687, http: 7474, https: 7473 },
+        version: '5.26.0',
+        edition: 'community',
+      });
+
+      const neo4j = new Neo4jLocal({ instanceName: 'preserve-test' });
+      // The auto-generated password should differ from stored
+      const initialPassword = neo4j.getCredentials().password;
+      expect(initialPassword).not.toBe(storedPassword);
+
+      // install() will fail (no binary available), but the password should be patched before that
+      try {
+        await neo4j.install();
+      } catch {
+        // Expected to fail — no actual binary to download
+      }
+
+      expect(readCredsSpy).toHaveBeenCalled();
+      expect(neo4j.getCredentials().password).toBe(storedPassword);
+      readCredsSpy.mockRestore();
+    });
+
+    it('does not override explicit password with stored credentials', async () => {
+      const readCredsSpy = vi.spyOn(fsUtils, 'readCredentials').mockResolvedValue({
+        username: 'neo4j',
+        password: 'old-stored-pw',
+        ports: { bolt: 7687, http: 7474, https: 7473 },
+        version: '5.26.0',
+        edition: 'community',
+      });
+
+      const neo4j = new Neo4jLocal({
+        instanceName: 'explicit-pw-test',
+        credentials: { password: 'my-explicit-pw' },
+      });
+
+      try {
+        await neo4j.install();
+      } catch {
+        // Expected to fail
+      }
+
+      expect(neo4j.getCredentials().password).toBe('my-explicit-pw');
+      readCredsSpy.mockRestore();
+    });
+
+    it('generates new password when no stored credentials exist', async () => {
+      const readCredsSpy = vi.spyOn(fsUtils, 'readCredentials').mockResolvedValue(null);
+
+      const neo4j = new Neo4jLocal({ instanceName: 'fresh-test' });
+      const generatedPassword = neo4j.getCredentials().password;
+
+      try {
+        await neo4j.install();
+      } catch {
+        // Expected to fail
+      }
+
+      // Password should remain the auto-generated one (not changed)
+      expect(neo4j.getCredentials().password).toBe(generatedPassword);
+      expect(generatedPassword.length).toBe(16);
+      readCredsSpy.mockRestore();
     });
   });
 });
