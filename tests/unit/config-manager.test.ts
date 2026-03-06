@@ -1,6 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { ConfigManager } from '../../src/config-manager.js';
 import { Logger } from '../../src/logger.js';
+import { readCredentials } from '../../src/fs-utils.js';
 
 describe('ConfigManager', () => {
   let manager: ConfigManager;
@@ -127,6 +131,110 @@ describe('ConfigManager', () => {
 
       // additionalConfig should override the auto-generated value
       expect(conf).toContain('dbms.security.procedures.unrestricted=apoc.*,custom.*');
+    });
+  });
+
+  describe('setupInstance() password handling', () => {
+    let tempDir: string;
+    let instanceDir: string;
+    let neo4jHome: string;
+
+    beforeEach(async () => {
+      tempDir = path.join(os.tmpdir(), `neo4j-config-test-${Date.now()}`);
+      instanceDir = path.join(tempDir, 'instance');
+      neo4jHome = path.join(tempDir, 'neo4j-home');
+
+      // Create a fake neo4j-admin that succeeds
+      const binDir = path.join(neo4jHome, 'bin');
+      await fs.mkdir(binDir, { recursive: true });
+      await fs.writeFile(path.join(binDir, 'neo4j-admin'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    });
+
+    afterEach(async () => {
+      await fs.rm(tempDir, { recursive: true, force: true });
+      vi.restoreAllMocks();
+    });
+
+    it('stores custom password in credentials.json', async () => {
+      await manager.setupInstance({
+        neo4jHome,
+        instanceDir,
+        ports: { bolt: 7687, http: 7474, https: 7473 },
+        credentials: { username: 'neo4j', password: 'my-custom-pass' },
+        javaExecutable: '/usr/bin/java',
+        javaHome: '/usr/lib/jvm/java-21',
+        version: '5.26.0',
+        edition: 'community',
+        plugins: [],
+      });
+
+      const stored = await readCredentials(instanceDir);
+      expect(stored).not.toBeNull();
+      expect(stored!.password).toBe('my-custom-pass');
+      expect(stored!.username).toBe('neo4j');
+    });
+
+    it('stores password with special characters in credentials.json', async () => {
+      const specialPassword = 'p@$$w0rd!#%^&*()_+-={}[]|;:\'"<>,.?/~`';
+
+      await manager.setupInstance({
+        neo4jHome,
+        instanceDir,
+        ports: { bolt: 7687, http: 7474, https: 7473 },
+        credentials: { username: 'neo4j', password: specialPassword },
+        javaExecutable: '/usr/bin/java',
+        javaHome: '/usr/lib/jvm/java-21',
+        version: '5.26.0',
+        edition: 'community',
+        plugins: [],
+      });
+
+      const stored = await readCredentials(instanceDir);
+      expect(stored!.password).toBe(specialPassword);
+    });
+
+    it('writes neo4j.conf with auth enabled alongside password setup', async () => {
+      await manager.setupInstance({
+        neo4jHome,
+        instanceDir,
+        ports: { bolt: 7687, http: 7474, https: 7473 },
+        credentials: { username: 'neo4j', password: 'admin-test-pass' },
+        javaExecutable: '/usr/bin/java',
+        javaHome: '/usr/lib/jvm/java-21',
+        version: '5.26.0',
+        edition: 'community',
+        plugins: [],
+      });
+
+      // Verify neo4j.conf was written with auth enabled
+      const confPath = path.join(instanceDir, 'conf', 'neo4j.conf');
+      const confContent = await fs.readFile(confPath, 'utf-8');
+      expect(confContent).toContain('dbms.security.auth_enabled=true');
+
+      // Verify the password was stored correctly
+      const stored = await readCredentials(instanceDir);
+      expect(stored!.password).toBe('admin-test-pass');
+    });
+
+    it('stores ports alongside password in credentials.json', async () => {
+      await manager.setupInstance({
+        neo4jHome,
+        instanceDir,
+        ports: { bolt: 17687, http: 17474, https: 17473 },
+        credentials: { username: 'neo4j', password: 'test123' },
+        javaExecutable: '/usr/bin/java',
+        javaHome: '/usr/lib/jvm/java-21',
+        version: '5.26.0',
+        edition: 'community',
+        plugins: [],
+      });
+
+      const stored = await readCredentials(instanceDir);
+      expect(stored!.password).toBe('test123');
+      expect(stored!.ports.bolt).toBe(17687);
+      expect(stored!.ports.http).toBe(17474);
+      expect(stored!.version).toBe('5.26.0');
+      expect(stored!.edition).toBe('community');
     });
   });
 });

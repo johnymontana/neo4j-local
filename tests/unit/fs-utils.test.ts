@@ -282,5 +282,32 @@ describe('fs-utils', () => {
       await writeCredentials(nested, sampleCreds);
       expect(await readCredentials(nested)).toEqual(sampleCreds);
     });
+
+    it('roundtrips password with special characters', async () => {
+      const creds: StoredCredentials = {
+        ...sampleCreds,
+        password: 'p@$$w0rd!#%^&*()_+-={}[]|;:\'"<>,.?/~`',
+      };
+      await writeCredentials(tempDir, creds);
+      const read = await readCredentials(tempDir);
+      expect(read!.password).toBe(creds.password);
+    });
+
+    it('roundtrips empty string password', async () => {
+      const creds: StoredCredentials = { ...sampleCreds, password: '' };
+      await writeCredentials(tempDir, creds);
+      const read = await readCredentials(tempDir);
+      expect(read!.password).toBe('');
+    });
+
+    it('roundtrips password containing JSON-special characters', async () => {
+      const creds: StoredCredentials = {
+        ...sampleCreds,
+        password: 'has"quotes\\and\nnewlines',
+      };
+      await writeCredentials(tempDir, creds);
+      const read = await readCredentials(tempDir);
+      expect(read!.password).toBe('has"quotes\\and\nnewlines');
+    });
   });
 });

@@ -93,6 +93,32 @@ describe('Neo4jLocal', () => {
       const neo4j = new Neo4jLocal();
       expect(neo4j.getCredentials().username).toBe('neo4j');
     });
+
+    it('preserves custom password exactly', () => {
+      const neo4j = new Neo4jLocal({ credentials: { password: 'MyP@ss123' } });
+      expect(neo4j.getCredentials().password).toBe('MyP@ss123');
+    });
+
+    it('preserves custom username and password together', () => {
+      const neo4j = new Neo4jLocal({
+        credentials: { username: 'admin', password: 'secret!' },
+      });
+      const creds = neo4j.getCredentials();
+      expect(creds.username).toBe('admin');
+      expect(creds.password).toBe('secret!');
+    });
+
+    it('uses empty string password when explicitly provided', () => {
+      const neo4j = new Neo4jLocal({ credentials: { password: '' } });
+      expect(neo4j.getCredentials().password).toBe('');
+    });
+
+    it('returns the same password on repeated calls', () => {
+      const neo4j = new Neo4jLocal();
+      const first = neo4j.getCredentials().password;
+      const second = neo4j.getCredentials().password;
+      expect(first).toBe(second);
+    });
   });
 
   describe('getInstanceDir()', () => {

@@ -1,6 +1,8 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 
 const execFileAsync = promisify(execFile);
@@ -159,6 +161,70 @@ describe('CLI Integration', () => {
       const { stderr, exitCode } = await runCli(['credentials', '--instance', `nonexistent-${Date.now()}`]);
       expect(exitCode).toBe(1);
       expect(stderr).toContain('No instance found');
+    });
+  });
+
+  describe('credentials (with stored credentials)', () => {
+    let tempDataHome: string;
+    const instanceName = `creds-test-${Date.now()}`;
+
+    async function runCliWithDataDir(args: string[], timeoutMs = 10_000): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+      try {
+        const { stdout, stderr } = await execFileAsync('node', [CLI_PATH, ...args], {
+          timeout: timeoutMs,
+          env: {
+            ...process.env,
+            NODE_NO_WARNINGS: '1',
+            XDG_DATA_HOME: tempDataHome,
+          },
+        });
+        return { stdout, stderr, exitCode: 0 };
+      } catch (err: any) {
+        return {
+          stdout: err.stdout ?? '',
+          stderr: err.stderr ?? '',
+          exitCode: err.code === 'ETIMEDOUT' ? 124 : (err.status ?? 1),
+        };
+      }
+    }
+
+    beforeAll(async () => {
+      tempDataHome = path.join(os.tmpdir(), `neo4j-cli-test-${Date.now()}`);
+      const instanceDir = path.join(tempDataHome, 'neo4j-local', instanceName);
+      await fs.mkdir(instanceDir, { recursive: true });
+      await fs.writeFile(
+        path.join(instanceDir, 'credentials.json'),
+        JSON.stringify({
+          username: 'neo4j',
+          password: 'stored-test-password',
+          ports: { bolt: 7687, http: 7474, https: 7473 },
+          version: '5.26.0',
+          edition: 'community',
+        }, null, 2),
+        'utf-8',
+      );
+    });
+
+    afterAll(async () => {
+      await fs.rm(tempDataHome, { recursive: true, force: true });
+    });
+
+    it('displays stored password in text format', async () => {
+      const { stdout, exitCode } = await runCliWithDataDir(['credentials', '--instance', instanceName]);
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('Password:  stored-test-password');
+      expect(stdout).toContain('Username:  neo4j');
+      expect(stdout).toContain('bolt://localhost:7687');
+    });
+
+    it('displays stored password in JSON format', async () => {
+      const { stdout, exitCode } = await runCliWithDataDir(['credentials', '--instance', instanceName, '--json']);
+      expect(exitCode).toBe(0);
+      const parsed = JSON.parse(stdout);
+      expect(parsed.password).toBe('stored-test-password');
+      expect(parsed.username).toBe('neo4j');
+      expect(parsed.uri).toBe('bolt://localhost:7687');
+      expect(parsed.httpUrl).toBe('http://localhost:7474');
     });
   });
 
