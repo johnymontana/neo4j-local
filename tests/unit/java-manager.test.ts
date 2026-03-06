@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -24,43 +24,36 @@ describe('JavaManager', () => {
 
   afterEach(async () => {
     await fs.rm(tempDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
   });
 
   describe('ensureJava()', () => {
     it('throws JavaNotFoundError when auto-download is disabled and no Java is found', async () => {
-      const original = process.env.JAVA_HOME;
-      delete process.env.JAVA_HOME;
+      // Mock findSystemJava to return null so the test is reliable
+      // regardless of whether Java is installed on the host
+      vi.spyOn(resolver, 'findSystemJava').mockResolvedValue(null);
 
-      try {
-        await expect(
-          manager.ensureJava({
-            neo4jVersion: '5.26.0',
-            javaVersion: 99,
-            allowAutoDownload: false,
-            cachePath: path.join(tempDir, 'empty'),
-          }),
-        ).rejects.toThrow(JavaNotFoundError);
-      } finally {
-        if (original) process.env.JAVA_HOME = original;
-      }
+      await expect(
+        manager.ensureJava({
+          neo4jVersion: '5.26.0',
+          javaVersion: 21,
+          allowAutoDownload: false,
+          cachePath: path.join(tempDir, 'empty'),
+        }),
+      ).rejects.toThrow(JavaNotFoundError);
     });
 
     it('error message includes instructions when auto-download disabled', async () => {
-      const original = process.env.JAVA_HOME;
-      delete process.env.JAVA_HOME;
+      vi.spyOn(resolver, 'findSystemJava').mockResolvedValue(null);
 
-      try {
-        await expect(
-          manager.ensureJava({
-            neo4jVersion: '5.26.0',
-            javaVersion: 99,
-            allowAutoDownload: false,
-            cachePath: path.join(tempDir, 'empty'),
-          }),
-        ).rejects.toThrow(/allowAutoDownloadJava/);
-      } finally {
-        if (original) process.env.JAVA_HOME = original;
-      }
+      await expect(
+        manager.ensureJava({
+          neo4jVersion: '5.26.0',
+          javaVersion: 21,
+          allowAutoDownload: false,
+          cachePath: path.join(tempDir, 'empty'),
+        }),
+      ).rejects.toThrow(/allowAutoDownloadJava/);
     });
 
     it('returns cached JRE when it exists', async () => {
